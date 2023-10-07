@@ -7,7 +7,7 @@ export const MangaCard: React.FC<{
 }> = ({ manga }) => {
   return (
     <Link 
-      href={`/manga/${manga.id}`}
+      href={`/mangas/${manga.id}`}
       className={``} 
     >
       <div key={manga.id} className="flex gap-8 p-4 bg-canvas rounded-lg border hover:border-primaryPurple hover:bg-canvasInset transition duration-300 ease-in-out">
