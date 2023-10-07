@@ -1,7 +1,9 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useState } from "react";
+import { MangaCard } from "~/components/MangaCard";
 import PageWithTopbar from "~/components/PageWithTopbar";
+import { api } from "~/utils/api";
 
 export default function Titles() {
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function Titles() {
         <PageWithTopbar>
           <div className="flex flex-col mx-auto mb-4 p-8 max-w-[950px]">
             <SearchBar value={search} onChange={setSearch} />
-            <Results query={query.query as string} />
+            <Results query={query.query as string || ""} />
           </div>
         </PageWithTopbar>
       </main>
@@ -39,7 +41,7 @@ const SearchBar: React.FC<{
         e.preventDefault();
         router.push({
           pathname: "/titles",
-          query: { query: value },
+          query: { query: cleanQuery(value) },
         });
       }}
     >
@@ -55,5 +57,26 @@ const SearchBar: React.FC<{
 }
 
 const Results: React.FC<{ query: string }> = ({ query }) => {
-  return query
+  const { data: results } = api.mangas.getMatching.useQuery({ query });
+
+  return (
+    <div className="flex flex-col">
+      {results?.map((manga) => (
+        <MangaCard manga={manga} />
+      ))}
+    </div>
+  );
 }
+
+const cleanQuery = (query: string) => {
+    // regex to split on whitespace
+    const whitespace = RegExp(/\s/);
+    // regex to remove non-alphanumeric characters
+    const nonAlphaNumeric = RegExp(/[^a-zA-Z0-9]/);
+    const keywords = query.split(whitespace).map((keyword) => {
+      // remove non-alphanumeric characters
+      return keyword.replace(nonAlphaNumeric, "");
+    });
+
+    return keywords.sort().join(" ");
+};
