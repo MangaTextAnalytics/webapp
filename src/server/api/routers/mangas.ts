@@ -20,7 +20,7 @@ export interface Manga extends SchemaManga {
   wordsUsedOncePct: string;
 }
 
-const updateManga = async (manga: Partial<Manga>, ctx: any) => {
+export const updateManga = async (manga: Partial<Manga>, ctx: any) => {
   const frequencies: Partial<SchemaFrequency>[] = await ctx.db.frequency.findMany({
     where: { manga_id: manga.id },
     orderBy: { count: "desc" },
@@ -43,14 +43,18 @@ const updateManga = async (manga: Partial<Manga>, ctx: any) => {
   manga.wordsUsedOncePct = `${(usedOnce / manga.totalWords * 100).toFixed(0)}%`;
 }
 
+export const updateMangas = async (mangas: Partial<Manga>[], ctx: any) => {
+  let promises = [];
+  for(let manga of mangas) {
+    promises.push(updateManga(manga, ctx));
+  }
+  return Promise.all(promises);
+}
+
 export const mangaRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
     let mangas: Partial<Manga>[] = await ctx.db.manga.findMany();
-
-    for(let manga of mangas) {
-      await updateManga(manga, ctx);
-    }
-
+    await updateMangas(mangas, ctx);
     return mangas as Manga[];
   }),
 
@@ -72,10 +76,7 @@ export const mangaRouter = createTRPCRouter({
       },
     });
 
-    for(let manga of mangas) {
-      await updateManga(manga, ctx);
-    }
-
+    await updateMangas(mangas, ctx);
     return mangas as Manga[];
   }),
 
@@ -91,7 +92,6 @@ export const mangaRouter = createTRPCRouter({
     }
 
     await updateManga(manga, ctx);
-
     return manga as Manga;
   }),
 });
