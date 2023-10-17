@@ -6,7 +6,6 @@ import {
 } from "~/server/api/trpc";
 
 import { Manga as SchemaManga, Frequency as SchemaFrequency } from "@prisma/client";
-import type { ctx } from "~/server/api/trpc";
 
 export type Frequency = {
   termTerm: string;
@@ -49,7 +48,7 @@ export const mangaRouter = createTRPCRouter({
     let mangas: Partial<Manga>[] = await ctx.db.manga.findMany();
 
     for(let manga of mangas) {
-      updateManga(manga, ctx);
+      await updateManga(manga, ctx);
     }
 
     return mangas as Manga[];
@@ -74,7 +73,7 @@ export const mangaRouter = createTRPCRouter({
     });
 
     for(let manga of mangas) {
-      updateManga(manga, ctx);
+      await updateManga(manga, ctx);
     }
 
     return mangas as Manga[];
@@ -91,7 +90,7 @@ export const mangaRouter = createTRPCRouter({
       return null;
     }
 
-    updateManga(manga, ctx);
+    await updateManga(manga, ctx);
 
     return manga as Manga;
   }),
