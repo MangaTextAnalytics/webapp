@@ -5,7 +5,7 @@ import { MangaCard } from "~/components/MangaCard";
 import PageWithTopbar from "~/components/PageWithTopbar";
 import { api } from "~/utils/api";
 
-export default function Titles() {
+export default function Mangas() {
   const router = useRouter();
   const { query } = router;
 
@@ -40,7 +40,7 @@ const SearchBar: React.FC<{
       onSubmit={(e) => {
         e.preventDefault();
         router.push({
-          pathname: "/titles",
+          pathname: "/mangas",
           query: { query: cleanQuery(value) },
         });
       }}

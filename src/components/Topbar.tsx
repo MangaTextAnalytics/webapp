@@ -13,7 +13,7 @@ type link = {
 const links: link[] = [
   { name: 'Home', href: '/', authed: false },
   { name: 'My Shelf', href: '/my-shelf/', authed: true },
-  { name: 'Titles', href: '/mangas/', authed: false },
+  { name: 'Mangas', href: '/mangas/', authed: false },
   { name: 'Settings', href: '/settings/', authed: true },
 ]
 

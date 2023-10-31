@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   createTRPCRouter,
+  protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
 
@@ -79,5 +80,19 @@ export const mangaRouter = createTRPCRouter({
 
     await updateManga(manga, ctx);
     return manga as Manga;
+  }),
+
+  getForLibrary: protectedProcedure.query(async ({ ctx }) => {
+    const mangas = await ctx.db.manga.findMany({
+      where: {
+        libraries: {
+          some: {
+            userId: ctx.session.user.id,
+          },
+        },
+      },
+    });
+
+    return mangas as SchemaManga[];
   }),
 });

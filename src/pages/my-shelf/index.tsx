@@ -2,9 +2,11 @@ import Head from "next/head";
 import PageWithTopbar from "~/components/PageWithTopbar";
 import { api } from "~/utils/api";
 import Frequencies from "~/components/Frequencies";
+import { MangaCardInfo } from "~/components/MangaCard";
 
-export default function Titles() {
+export default function Mangas() {
   const { data: library, isLoading } = api.libraries.getCurrentLibrary.useQuery();
+  const { data: mangas } = api.mangas.getForLibrary.useQuery();
 
   return (
     <>
@@ -37,7 +39,13 @@ export default function Titles() {
                   </div>
                 </div>
                 <hr/>
-                <div>
+                <h2 className="text-2xl font-semibold">Mangas</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {mangas && mangas.map((manga) => (
+                    <div key={manga.id} className="flex flex-col gap-4 rounded-lg border border-fgMuted p-4">
+                      <MangaCardInfo key={manga.id} title={manga.title} author={manga.author} year={manga.year} />
+                    </div>
+                  ))}
                 </div>
                 <hr/>
                 <Frequencies frequencies={library.frequencies} />
