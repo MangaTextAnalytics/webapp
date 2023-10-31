@@ -14,10 +14,6 @@ export type Frequency = {
 
 export interface Manga extends SchemaManga {
   frequencies: Frequency[];
-  uniqueWords: number;
-  totalWords: number;
-  wordsUsedOnce: number;
-  wordsUsedOncePct: string;
 }
 
 export const updateManga = async (manga: Partial<Manga>, ctx: any) => {
@@ -26,21 +22,11 @@ export const updateManga = async (manga: Partial<Manga>, ctx: any) => {
     orderBy: { count: "desc" },
   });
 
-  let sum = 0;
-  let usedOnce = 0;
   for(let frequency of frequencies) {
     delete frequency.manga_id;
     delete frequency.id;
-    sum += frequency.count || 0;
-    if(frequency.count === 1) {
-      usedOnce++;
-    }
   }
   manga.frequencies = frequencies as Frequency[];
-  manga.totalWords = sum;
-  manga.uniqueWords = frequencies.length;
-  manga.wordsUsedOnce = usedOnce;
-  manga.wordsUsedOncePct = `${(usedOnce / manga.totalWords * 100).toFixed(0)}%`;
 }
 
 export const updateMangas = async (mangas: Partial<Manga>[], ctx: any) => {
@@ -81,10 +67,10 @@ export const mangaRouter = createTRPCRouter({
   }),
 
   getOne: publicProcedure.input(
-    z.object({ id: z.number() })
+    z.object({ mangaId: z.number() })
   ).query(async ({ input, ctx }) => {
     const manga: Partial<Manga> | null = await ctx.db.manga.findUnique({
-      where: { id: input.id },
+      where: { id: input.mangaId },
     });
 
     if(!manga) {

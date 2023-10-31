@@ -66,9 +66,26 @@ model Manga {
   author String
   year   Int
   volume Int
+  uniqueWords Int
+  totalWords  Int
+  wordsUsedOnce Int
+  wordsUsedOncePct Float
 
   frequencies Frequency[]
   libraries   Library[]
+}
+
+model LibraryFrequency {
+  id       Int    @id @default(autoincrement())
+
+  count    Int
+  termTerm String
+  library_id Int
+
+  term     Term   @relation(fields: [termTerm], references: [term])
+  library  Library  @relation(fields: [library_id], references: [id])
+
+  @@unique([termTerm, library_id])
 }
 
 model Frequency {
@@ -80,17 +97,25 @@ model Frequency {
 
   term     Term   @relation(fields: [termTerm], references: [term])
   manga    Manga  @relation(fields: [manga_id], references: [id])
+
+  @@unique([termTerm, manga_id])
 }
 
 model Term {
   term      String      @id
   Frequency Frequency[]
+  LibraryFrequency LibraryFrequency[]
 }
 
 model Library {
   id     Int    @id @default(autoincrement())
   userId String @unique
+  uniqueWords Int @default(0)
+  totalWords  Int @default(0)
+  wordsUsedOnce Int @default(0)
+  wordsUsedOncePct Float @default(0)
 
   user   User   @relation(fields: [userId], references: [id])
   mangas Manga[]
+  libraryFrequencies LibraryFrequency[]
 }
