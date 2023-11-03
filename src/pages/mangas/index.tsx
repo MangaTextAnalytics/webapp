@@ -60,7 +60,7 @@ const Results: React.FC<{ query: string }> = ({ query }) => {
   const { data: results } = api.mangas.getMatching.useQuery({ query });
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-4">
       {results?.map((manga) => (
         <MangaCard manga={manga} />
       ))}

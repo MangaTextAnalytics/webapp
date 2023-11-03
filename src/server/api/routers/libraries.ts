@@ -4,33 +4,136 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 
-import { Frequency, Manga, updateMangas } from "~/server/api/routers/mangas";
-import { Library as SchemaLibrary, LibraryFrequency as SchemaLibraryFrequency } from "@prisma/client";
+import { Frequency } from "~/server/api/routers/mangas";
+import { Manga as SchemaManga, Library as SchemaLibrary, LibraryFrequency as SchemaLibraryFrequency } from "@prisma/client";
 
 interface Library extends SchemaLibrary {
   frequencies: Frequency[];
 }
 
-export const libraryRouter = createTRPCRouter({
-  getCurrentLibrary: protectedProcedure.query(async ({ ctx }) => {
-    let schemaResult = await ctx.db.library.findFirst({
+const updateLibraryManga = async (ctx: any, library: SchemaLibrary, mangaId: number, add: boolean) => {
+    // connect/disconnect the library's manga
+    await ctx.db.library.update({
+      where: {
+        id: library.id,
+      },
+      data: {
+        mangas: {
+          [add ? "connect" : "disconnect"]: {
+            id: mangaId,
+          },
+        },
+      },
+    });
+
+    const mangaFrequencies = await ctx.db.frequency.findMany({
+      where: {
+        manga_id: mangaId,
+      },
+    })
+
+    for(let mangaFreq of mangaFrequencies) {
+      let libFreq = await ctx.db.libraryFrequency.findFirst({
+        where: {
+          termTerm: mangaFreq.termTerm,
+          library_id: library.id,
+        },
+      });
+
+      // if it's already in the library, update the count
+      if(libFreq) {
+        // Increment the count in LibraryFrequency
+        libFreq = await ctx.db.libraryFrequency.update({
+          where: {
+            id: libFreq.id,
+          },
+          data: {
+            count: {
+              [add ? "increment" : "decrement"]: mangaFreq.count,
+            },
+          },
+        });
+
+        // If the count is 0, delete the LibraryFrequency
+        if(libFreq.count == 0) {
+          await ctx.db.libraryFrequency.delete({ where: { id: libFreq.id } });
+        }
+      } else if(add) {
+        // Otherwise, create a new LibraryFrequency
+        libFreq = await ctx.db.libraryFrequency.create({
+          data: {
+            library_id: library.id,
+            termTerm: mangaFreq.termTerm,
+            count: mangaFreq.count,
+          },
+        });
+      }
+    }
+}
+
+const updateLibraryStats = async (ctx: any, library: SchemaLibrary) => {
+    const newLib: SchemaLibrary = {
+      id: library.id,
+      userId: library.userId,
+      totalWords: 0,
+      uniqueWords: 0,
+      wordsUsedOnce: 0,
+      wordsUsedOncePct: 0,
+    }
+
+    const libFreqs = await ctx.db.libraryFrequency.findMany({
+      where: {
+        library_id: library.id,
+      },
+    });
+
+    for(let libFreq of libFreqs) {
+      newLib.totalWords += libFreq.count;
+      newLib.uniqueWords++;
+      if(libFreq.count == 1) {
+        newLib.wordsUsedOnce++;
+      }
+    }
+    newLib.wordsUsedOncePct = (100 * newLib.wordsUsedOnce / newLib.uniqueWords ) || 0;
+
+    await ctx.db.library.update({
+      where: {
+        id: library.id,
+      },
+      data: {
+        totalWords: newLib.totalWords,
+        uniqueWords: newLib.uniqueWords,
+        wordsUsedOnce: newLib.wordsUsedOnce,
+        wordsUsedOncePct: newLib.wordsUsedOncePct,
+      },
+    });
+}
+
+const getOrCreateLibrary = async (ctx: any): Promise<SchemaLibrary> => {
+    let library = await ctx.db.library.findFirst({
       where: { userId: ctx.session.user.id },
     });
 
-    if(!schemaResult) {
+    if(!library) {
       // create a new library
-      schemaResult = await ctx.db.library.create({
+      library = await ctx.db.library.create({
         data: {
           userId: ctx.session.user.id,
         },
       });
     }
-    const result = schemaResult as Partial<Library>;
 
-    // update the frequencies
+    return library;
+}
+
+export const libraryRouter = createTRPCRouter({
+  getCurrentLibrary: protectedProcedure.query(async ({ ctx }) => {
+    const library: Partial<Library> = await getOrCreateLibrary(ctx);
+
+    // link the frequencies
     const frequencies: Partial<SchemaLibraryFrequency>[] = await ctx.db.libraryFrequency.findMany({
       where: {
-        library_id: result.id,
+        library_id: library.id,
       },
       orderBy: { count: "desc" },
     });
@@ -39,9 +142,9 @@ export const libraryRouter = createTRPCRouter({
       delete frequency.library_id;
       delete frequency.id;
     }
-    result.frequencies = frequencies as Frequency[];
+    library.frequencies = frequencies as Frequency[];
 
-    return result as Library;
+    return library as Library;
   }),
 
   mangaInLibrary: protectedProcedure
@@ -63,99 +166,20 @@ export const libraryRouter = createTRPCRouter({
       return !!result;
     }),
 
-
-    addMangaToLibrary: protectedProcedure
+    /**
+      * Add or remove a manga from the user's library. Returns an empty promise.
+      *
+      * @param mangaId The ID of the manga to add or remove
+      * @param add Whether to add or remove the manga
+      */
+    updateMangaLibrary: protectedProcedure
     .input(z.object({
       mangaId: z.number(),
+      add: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // link the manga to the library
-      const library = await ctx.db.library.upsert({
-        where: {
-          userId: ctx.session.user.id,
-        },
-        create: {
-          userId: ctx.session.user.id,
-          // Other fields for Library creation
-          mangas: {
-            connect: {
-              id: input.mangaId,
-            },
-          },
-        },
-        update: {
-          mangas: {
-            connect: {
-              id: input.mangaId,
-            },
-          },
-        },
-      });
-
-      // update the library's frequencies and counts
-      const frequencies = await ctx.db.frequency.findMany({
-        where: {
-          manga_id: input.mangaId,
-        },
-      })
-
-      for(let freq of frequencies) { 
-        const libFreq = await ctx.db.libraryFrequency.upsert({
-          where: {
-            termTerm_library_id: {
-              termTerm: freq.termTerm,
-              library_id: library.id,
-            },
-          },
-          create: {
-            count: freq.count,
-            term: {
-              connect: {
-                term: freq.termTerm,
-              },
-            },
-            library: {
-              connect: {
-                id: library.id,
-              },
-            },
-          },
-          update: {
-            count: {
-              increment: freq.count,
-            },
-          },
-        });
-
-        // update library based on the new frequency (freq)
-        library.totalWords += freq.count;
-        if(freq.count == 1 && libFreq.count == 1) {
-          // new word used once
-          library.wordsUsedOnce++;
-        }
-      }
-
-      const count = await ctx.db.libraryFrequency.count({
-        where: {
-          library_id: library.id,
-        },
-      });
-
-      // update totals
-      library.uniqueWords = count;
-      library.wordsUsedOncePct = 100 * library.wordsUsedOnce / library.uniqueWords;
-
-      // update the library
-      await ctx.db.library.update({
-        where: {
-          id: library.id,
-        },
-        data: {
-          totalWords: library.totalWords,
-          uniqueWords: library.uniqueWords,
-          wordsUsedOnce: library.wordsUsedOnce,
-          wordsUsedOncePct: library.wordsUsedOncePct,
-        },
-      });
+      const library = await getOrCreateLibrary(ctx);
+      await updateLibraryManga(ctx, library, input.mangaId, input.add);
+      return updateLibraryStats(ctx, library);
     }),
 });

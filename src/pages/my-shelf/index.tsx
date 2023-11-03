@@ -2,7 +2,9 @@ import Head from "next/head";
 import PageWithTopbar from "~/components/PageWithTopbar";
 import { api } from "~/utils/api";
 import Frequencies from "~/components/Frequencies";
-import { MangaCardInfo } from "~/components/MangaCard";
+import { MangaCardInfo, MangaCardStats } from "~/components/MangaCard";
+import Link from "next/link";
+import { Manga } from "@prisma/client";
 
 export default function Mangas() {
   const { data: library, isLoading } = api.libraries.getCurrentLibrary.useQuery();
@@ -25,26 +27,13 @@ export default function Mangas() {
                   <div className="flex flex-col">
                     <h2 className="text-2xl font-semibold">Library</h2>
                   </div>
-                  <div className="flex flex-col mt-6">
-                    <span className="text-fgMuted italic mr-4">Length (in words):</span>
-                    <span className="text-fgMuted italic mr-4">Unique Words:</span>
-                    <span className="text-fgMuted italic mr-4">Unique Words (used once):</span>
-                    <span className="text-fgMuted italic mr-4">Unique Words (used once %):</span>
-                  </div>
-                  <div className="flex flex-col mt-6">
-                    <p className="text-fgDefault">{library.totalWords}</p>
-                    <p className="text-fgDefault">{library.uniqueWords}</p>
-                    <p className="text-fgDefault">{library.wordsUsedOnce}</p>
-                    <p className="text-fgDefault">{library.wordsUsedOncePct}</p>
-                  </div>
+                  <MangaCardStats {...library} />
                 </div>
                 <hr/>
                 <h2 className="text-2xl font-semibold">Mangas</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                   {mangas && mangas.map((manga) => (
-                    <div key={manga.id} className="flex flex-col gap-4 rounded-lg border border-fgMuted p-4">
-                      <MangaCardInfo key={manga.id} title={manga.title} author={manga.author} year={manga.year} />
-                    </div>
+                    <MangaCard key={manga.id} manga={manga} />
                   ))}
                 </div>
                 <hr/>
@@ -57,3 +46,24 @@ export default function Mangas() {
     </>
   );
 }
+
+const MangaCard: React.FC<{ manga: Manga }> = ({ manga }) => {
+  const { mutate } = api.libraries.updateMangaLibrary.useMutation();
+
+  return (
+    <div className="mx-2 relative">
+      <Link 
+        href={`/mangas/${manga.id}`} 
+        className="block relative z-1 p-4 rounded-lg border border-2 border-fgMuted transition-all duration-150 hover:border-primaryPurple hover:shadow-md"
+      >
+        <MangaCardInfo key={manga.id} title={manga.title} author={manga.author} year={manga.year} />
+      </Link>
+      <button 
+        className="absolute top-2 text-sm right-2 z-2 rounded-lg py-1 px-2 bg-primaryPurple font-semibold text-canvasInset border-2 border-transparent hover:border-primaryPurple hover:bg-canvasInset hover:text-primaryPurple transition-all duration-150"
+        onClick={() => mutate({ mangaId: manga.id, add: false })}
+      >
+        Remove
+      </button>
+    </div>
+  );
+};

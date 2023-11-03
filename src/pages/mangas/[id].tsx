@@ -9,8 +9,8 @@ const MangaPage:React.FC = () => {
   const mangaId = parseInt(router.query.id as string)
 
   const { data: manga, isLoading } = api.mangas.getOne.useQuery({ mangaId })
-  const { data: mangaInLibrary } = api.libraries.mangaInLibrary.useQuery({ mangaId })
-  const { mutate } = api.libraries.addMangaToLibrary.useMutation()
+  const { data: mangaInLibrary, isLoading: mangaInLibraryLoading } = api.libraries.mangaInLibrary.useQuery({ mangaId })
+  const { mutate } = api.libraries.updateMangaLibrary.useMutation()
 
   return (
     <PageWithTopbar>
@@ -42,9 +42,14 @@ const MangaPage:React.FC = () => {
             <button 
               className="bg-primaryPurple disabled:bg-fgMuted font-semibold text-white rounded-md px-3 py-2 hover:bg-primaryPurpleDark hover:text-white hover:shadow-md transition duration-300 ease-in-out"
               disabled={mangaInLibrary}
-              onClick={() => mutate({ mangaId })}
+              onClick={() => mutate({ mangaId, add: true })}
               >
-              <span>{mangaInLibrary ? "Already added" : "+ Add to Library" }</span>
+              <span>
+                {mangaInLibraryLoading ? "Adding..." : (
+                  mangaInLibrary ? "Already added" : "+ Add to Library" 
+                  )
+                }
+              </span>
             </button>
             </div>
             <hr/>
