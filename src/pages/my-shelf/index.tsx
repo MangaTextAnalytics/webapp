@@ -35,6 +35,11 @@ export default function Library() {
                   {mangas && mangas.map((manga) => (
                     <MangaCard key={manga.id} manga={manga} />
                   ))}
+                  {mangas && mangas.length === 0 && (
+                    <p className="text-lg">
+                      No mangas in library <Link href="/mangas" className="text-primaryPurple hover:underline">Add some!</Link>
+                    </p>
+                  )}
                 </div>
                 <hr/>
                 <Frequencies ownerId={library.id} type="library" />

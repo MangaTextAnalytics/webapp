@@ -9,11 +9,15 @@ export const frequencyRouter = createTRPCRouter({
   getFrequencies: publicProcedure.input(z.object({
     ownerId: z.number(),
     type: z.enum(["volume", "manga", "library"]),
-    sorted: z.boolean().optional(),
+    start: z.number().optional(),
+    end: z.number().optional(),
   })).query(async ({ ctx, input }) => {
     const { ownerId, type } = input;
 
-    return await ctx.db.frequency.findMany({
+    const skip = input.start || 0;
+    const take = input.end ? input.end - skip : undefined;
+
+    const frequencies = await ctx.db.frequency.findMany({
       where: {
         [type]: {
           id: ownerId,
@@ -22,6 +26,22 @@ export const frequencyRouter = createTRPCRouter({
       orderBy: {
         count: "desc",
       },
+
+      skip: skip,
+      take: take,
     });
+
+    const totalCount = await ctx.db.frequency.count({
+      where: {
+        [type]: {
+          id: ownerId,
+        },
+      },
+    });
+
+    return {
+      totalCount,
+      frequencies,
+    };
   }),
 });
