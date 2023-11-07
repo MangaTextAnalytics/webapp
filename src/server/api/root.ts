@@ -4,6 +4,7 @@ import { libraryRouter } from "./routers/libraries";
 import { frequencyRouter } from "./routers/frequencies";
 import { statsRouter } from "./routers/stats";
 import { volumeRouter } from "./routers/volumes";
+import { termRouter } from "./routers/terms";
 
 /**
  * This is the primary router for your server.
@@ -11,6 +12,7 @@ import { volumeRouter } from "./routers/volumes";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  term: termRouter,
   stats: statsRouter,
   mangas: mangaRouter,
   volumes: volumeRouter,
