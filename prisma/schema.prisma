@@ -61,61 +61,92 @@ model VerificationToken {
 }
 
 model Manga {
-  id     Int    @id @default(autoincrement())
-  title  String
-  author String
-  year   Int
-  volume Int
-  uniqueWords Int
-  totalWords  Int
-  wordsUsedOnce Int
-  wordsUsedOncePct Float
+  id        Int     @id @default(autoincrement())
+  title     String  @unique
+  author    String
+  year      Int
+  statsId   Int     @unique
 
-  frequencies Frequency[]
+  stats       Stats   @relation(fields: [statsId], references: [id], onDelete: Cascade)
+  volumes     Volume[]
   libraries   Library[]
+  frequencies Frequency[]
 }
 
-model LibraryFrequency {
-  id       Int    @id @default(autoincrement())
+model Volume {
+  id          Int   @id @default(autoincrement())
+  volume      Int
+  statsId     Int   @unique
+  mangaId    Int
 
-  count    Int
-  termTerm String
-  library_id Int
+  stats       Stats @relation(fields: [statsId], references: [id], onDelete: Cascade)
+  manga       Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  frequencies Frequency[]
 
-  term     Term   @relation(fields: [termTerm], references: [term])
-  library  Library  @relation(fields: [library_id], references: [id])
+  // only allow one #1 volume per manga
+  @@unique([mangaId, volume])
 
-  @@unique([termTerm, library_id])
+  // allow for searching by manga
+  @@index([mangaId], name: "manga_id_index")
 }
 
 model Frequency {
-  id       Int    @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
+  count      Int
+  termTerm   String
+  term       Term      @relation(fields: [termTerm], references: [term])
+  libraryId Int?
+  volumeId  Int?
+  mangaId   Int?
 
-  count    Int
-  termTerm String
-  manga_id Int
+  library    Library? @relation(fields: [libraryId], references: [id])
+  volume     Volume?  @relation(fields: [volumeId], references: [id])
+  manga      Manga?   @relation(fields: [mangaId], references: [id])
 
-  term     Term   @relation(fields: [termTerm], references: [term])
-  manga    Manga  @relation(fields: [manga_id], references: [id])
+  // Allow for searching by library
+  @@index([libraryId], name: "library_id_index")
 
-  @@unique([termTerm, manga_id])
+  // Allow for searching by volume
+  @@index([volumeId], name: "volume_id_index")
+
+  // Ensure only one frequency per term per library or volume or manga
+  @@unique([termTerm, libraryId])
+  @@unique([termTerm, volumeId])
+  @@unique([termTerm, mangaId])
 }
 
 model Term {
-  term      String      @id
-  Frequency Frequency[]
-  LibraryFrequency LibraryFrequency[]
+  term        String  @id
+  totalCount  Int
+
+  Frequency   Frequency[]
+
+  // allow for querying by totalCount
+  @@index([totalCount], name: "totalCount_index")
 }
 
 model Library {
-  id     Int    @id @default(autoincrement())
-  userId String @unique
-  uniqueWords Int @default(0)
-  totalWords  Int @default(0)
-  wordsUsedOnce Int @default(0)
-  wordsUsedOncePct Float @default(0)
+  id      Int     @id @default(autoincrement())
+  userId  String  @unique
+  statsId Int     @unique
 
-  user   User   @relation(fields: [userId], references: [id])
-  mangas Manga[]
-  libraryFrequencies LibraryFrequency[]
+  user        User    @relation(fields: [userId], references: [id])
+  stats       Stats   @relation(fields: [statsId], references: [id], onDelete: Cascade)
+  mangas      Manga[]
+  frequencies Frequency[]
+
+  // allow for searching by user
+  @@index([userId], name: "userId_index")
+}
+
+model Stats {
+  id                Int   @id @default(autoincrement())
+  uniqueWords       Int   @default(0)
+  totalWords        Int   @default(0)
+  wordsUsedOnce     Int   @default(0)
+  wordsUsedOncePct  Float @default(0)
+
+  library Library?
+  manga   Manga?
+  volume  Volume?
 }

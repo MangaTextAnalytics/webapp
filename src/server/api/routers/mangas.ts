@@ -6,42 +6,11 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
-import { Manga as SchemaManga, Frequency as SchemaFrequency } from "@prisma/client";
-
-export type Frequency = {
-  termTerm: string;
-  count: number;
-};
-
-export interface Manga extends SchemaManga {
-  frequencies: Frequency[];
-}
-
-export const updateManga = async (manga: Partial<Manga>, ctx: any) => {
-  const frequencies: Partial<SchemaFrequency>[] = await ctx.db.frequency.findMany({
-    where: { manga_id: manga.id },
-    orderBy: { count: "desc" },
-  });
-
-  for(let frequency of frequencies) {
-    delete frequency.manga_id;
-    delete frequency.id;
-  }
-  manga.frequencies = frequencies as Frequency[];
-}
-
-export const updateMangas = async (mangas: Partial<Manga>[], ctx: any) => {
-  let promises = [];
-  for(let manga of mangas) {
-    promises.push(updateManga(manga, ctx));
-  }
-  return Promise.all(promises);
-}
+import { Manga } from "@prisma/client";
 
 export const mangaRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    let mangas: Partial<Manga>[] = await ctx.db.manga.findMany();
-    await updateMangas(mangas, ctx);
+    let mangas = await ctx.db.manga.findMany();
     return mangas as Manga[];
   }),
 
@@ -50,7 +19,7 @@ export const mangaRouter = createTRPCRouter({
   ).query(async ({ input, ctx }) => {
     const keywords = input.query.split(" ");
 
-    let mangas: Partial<Manga>[] = await ctx.db.manga.findMany({
+    let mangas = await ctx.db.manga.findMany({
       where: {
         OR: keywords.map((keyword) => {
           return { 
@@ -63,23 +32,17 @@ export const mangaRouter = createTRPCRouter({
       },
     });
 
-    await updateMangas(mangas, ctx);
     return mangas as Manga[];
   }),
 
   getOne: publicProcedure.input(
     z.object({ mangaId: z.number() })
   ).query(async ({ input, ctx }) => {
-    const manga: Partial<Manga> | null = await ctx.db.manga.findUnique({
+    const manga = await ctx.db.manga.findUnique({
       where: { id: input.mangaId },
     });
 
-    if(!manga) {
-      return null;
-    }
-
-    await updateManga(manga, ctx);
-    return manga as Manga;
+    return manga;
   }),
 
   getForLibrary: protectedProcedure.query(async ({ ctx }) => {
@@ -93,6 +56,6 @@ export const mangaRouter = createTRPCRouter({
       },
     });
 
-    return mangas as SchemaManga[];
+    return mangas;
   }),
 });

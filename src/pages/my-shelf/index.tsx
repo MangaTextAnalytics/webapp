@@ -2,11 +2,11 @@ import Head from "next/head";
 import PageWithTopbar from "~/components/PageWithTopbar";
 import { api } from "~/utils/api";
 import Frequencies from "~/components/Frequencies";
-import { MangaCardInfo, MangaCardStats } from "~/components/MangaCard";
+import { CardStats, MangaCardInfo } from "~/components/MangaCard";
 import Link from "next/link";
 import { Manga } from "@prisma/client";
 
-export default function Mangas() {
+export default function Library() {
   const { data: library, isLoading } = api.libraries.getCurrentLibrary.useQuery();
   const { data: mangas } = api.mangas.getForLibrary.useQuery();
 
@@ -20,14 +20,14 @@ export default function Mangas() {
       <main className="">
         <PageWithTopbar>
           <div className="flex flex-col max-w-[950px] mx-auto gap-4 p-8 bg-canvas">
-            {(isLoading || !library) && <p>Loading...</p>}
+            {isLoading && <p>Loading...</p>}
             {library && (
               <>
                 <div key={library.id} className="flex gap-8">
                   <div className="flex flex-col">
                     <h2 className="text-2xl font-semibold">Library</h2>
                   </div>
-                  <MangaCardStats {...library} />
+                  <CardStats ownerId={library.id} type="library" />
                 </div>
                 <hr/>
                 <h2 className="text-2xl font-semibold">Mangas</h2>
@@ -37,7 +37,7 @@ export default function Mangas() {
                   ))}
                 </div>
                 <hr/>
-                <Frequencies frequencies={library.frequencies} />
+                <Frequencies ownerId={library.id} type="library" />
               </>
             )}
           </div>
